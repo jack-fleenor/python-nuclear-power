@@ -1,7 +1,9 @@
 import requests
 from dateutil import parser
-from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from datetime import datetime, date
 from bs4 import BeautifulSoup
+import matplotlib.pyplot as plt
 
 # Page the has a list of all the nuclear reactors in the United States.
 list_of_reactors = "https://www.nrc.gov/reactors/operating/list-power-reactor-units.html"
@@ -10,6 +12,9 @@ page = requests.get(list_of_reactors)
 # Open in BS4
 soup = BeautifulSoup(page.content, "html.parser")
 table = soup.find("table")
+
+ages = []
+today = date.today()
 
 def processReactorTableData(table):
     print("Processing table data...")
@@ -57,26 +62,31 @@ def pullReactorData(row):
         if(reactor_license_issued != None):
             temp_str = reactor_license_issued.next_sibling
             try:
-                temp = parser.parse(temp_str.split(',')[0], fuzzy=True).strftime('%m/%d/%Y')
-
+                temp = parser.parse(temp_str.split(',')[0], fuzzy=True)
+                ages.append(relativedelta(today, temp).years)
+                temp = temp.strftime('%m/%d/%Y')
             except:
                 temp = "error"
             reactor_data['issued'] = temp
+
         if(reactor_license_renewal != None):
             temp_str = reactor_license_renewal.next_sibling
             try:
                 temp = parser.parse(temp_str.split(',')[0], fuzzy=True).strftime('%m/%d/%Y')
-
             except:
                 temp = "error"
             reactor_data['renewal'] = temp
+
         if(reactor_license_expires != None):
             temp_str = reactor_license_expires.next_sibling
             try:
-                temp = parser.parse(temp_str.split(',')[0], fuzzy=True).strftime('%m/%d/%Y')
+                temp = parser.parse(temp_str.split(',')[0], fuzzy=True)
+                temp = temp.strftime('%m/%d/%Y')
+                
             except:
                 temp = "error"
             reactor_data['expires'] = temp
+
         return reactor_data
     else:
         return None
@@ -84,5 +94,14 @@ def pullReactorData(row):
         
 if(table != None):
     processReactorTableData(table)
+    average = sum(ages)/len(ages)
+    print(average)
+    fig, chart = plt.subplots(1,1)
+    chart.hist(ages, len(ages))
+    chart.set_title("Nuclear Reactor Ages Histogram")
+    chart.set_xlabel("Age (years)")
+    chart.set_ylabel("Power Plants")
+    
+    plt.show()
 else: 
     print("error finding table")
